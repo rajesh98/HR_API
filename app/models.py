@@ -27,7 +27,12 @@ class Employee(Base):
     employee_id: Mapped[int] = mapped_column(Integer, primary_key=True)
 
     # full_name character varying(100) NOT NULL, CONSTRAINT employees_full_name_key UNIQUE (full_name)
-    full_name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    full_name: Mapped[str] = mapped_column(String(100), unique=False, nullable=False)
+
+    user_name :  Mapped[str] = mapped_column(String(100), unique=True, nullable=False,)
+
+    password : Mapped[str] = mapped_column(String(100), nullable=False, default="test")
+
 
     # department character varying(50)
     department: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
@@ -129,7 +134,7 @@ class LeaveTransaction(Base):
 
     # leave_type leave_type_enum NOT NULL DEFAULT 'General Leave'::leave_type_enum
     leave_type: Mapped[LeaveType] = mapped_column(
-        Enum(LeaveType, name='leave_type_enum', create_type=False), # create_type=False assumes the ENUM type exists in the DB
+        Enum(LeaveType, name='leave_type_enum', create_type=TRUE), # create_type=False assumes the ENUM type exists in the DB
         #String(100),
         nullable=False,
         default=LeaveType.general
@@ -137,7 +142,7 @@ class LeaveTransaction(Base):
 
     # leave_status leave_status_enum NOT NULL DEFAULT 'Applied'::leave_status_enum
     leave_status: Mapped[LeaveStatus] = mapped_column(
-        Enum(LeaveStatus, name='leave_status_enum', create_type=False), # create_type=False assumes the ENUM type exists in the DB
+        Enum(LeaveStatus, name='leave_status_enum', create_type=True), # create_type=False assumes the ENUM type exists in the DB
         #String(100),
         nullable=False,
         default=LeaveStatus.Applied
@@ -156,4 +161,55 @@ class LeaveTransaction(Base):
         return (
             f"LeaveTransaction(id={self.transaction_id!r}, employee_id={self.employee_id!r}, "
             f"date={self.leave_date!r}, type={self.leave_type.value!r}, status={self.leave_status.value!r})"
+        )
+    
+
+
+# 1. Define Python Enum for Permissions
+class Permission(enum.Enum):
+    """Corresponds to the permission_enum in PostgreSQL."""
+    SELF_READ = "SELF_READ"
+    ALL_READ = "ALL_READ"
+    SELF_LEAVE_APPLY = "SELF_LEAVE_APPLY"
+    # Add other permissions as needed
+
+# 2. Define the EmployeePermission Association Model
+class EmployeePermission(Base):
+    __tablename__ = 'employee_permissions'
+
+    # The table has a composite PRIMARY KEY and UNIQUE constraint on (employee_id, permission).
+    __table_args__ = (
+        UniqueConstraint('employee_id', 'permission', name='unique_employee_permission'),
+        # Note: The composite primary key is defined implicitly by setting both
+        # employee_id and permission as primary_key=True below.
+    )
+
+    # ----------------------------------------------------
+    # Columns derived from the CREATE TABLE statement:
+    # ----------------------------------------------------
+
+    # employee_id integer NOT NULL, FOREIGN KEY
+    employee_id: Mapped[int] = mapped_column(
+        ForeignKey('employees.employee_id', ondelete="CASCADE", onupdate="CASCADE"),
+        primary_key=True
+    )
+
+    # permission permission_enum NOT NULL
+    permission: Mapped[Permission] = mapped_column(
+        Enum(Permission, name='permission_enum', create_type=True),
+        primary_key=True,
+        nullable=False
+    )
+
+    # ----------------------------------------------------
+    # Relationships (Optional, but often useful for association tables):
+    # ----------------------------------------------------
+
+    # Relationship to the Employee model (back-reference to the Employee instance)---uncomment next line if relation added to Emplyee model also
+    #employee: Mapped["Employee"] = relationship(back_populates="permissions_links")
+
+    def __repr__(self) -> str:
+        return (
+            f"EmployeePermission(employee_id={self.employee_id!r}, "
+            f"permission={self.permission.value!r})"
         )

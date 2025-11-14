@@ -4,6 +4,7 @@ from fastapi import Depends,HTTPException,status,APIRouter
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import desc, func, or_, asc
+from fastapi.security.oauth2 import OAuth2PasswordRequestForm
 
 
 from app import schemas
@@ -56,10 +57,30 @@ def get_all_user( db:Session = Depends(get_db)):
 @app.get("/employee/id/{id}",)
 def get_a_user( id:int, db:Session = Depends(get_db)):
     emply = db.query(models.Employee).filter(models.Employee.employee_id==id).first()
-    print(type(emply))
+    #print(type(emply))
     if emply.manager_employee_id != None:
         manager = db.query(models.Employee).filter(models.Employee.employee_id==emply.manager_employee_id).first()
         emply.manager = manager
+
+    permissions = db.query(models.EmployeePermission).filter(models.EmployeePermission.employee_id==id).all()
+    if permissions:
+        emply.permissions = permissions
+    return emply
+
+@app.get("/login/employee/",)
+def login( user_credentional: OAuth2PasswordRequestForm = Depends(),db:Session = Depends(get_db)):
+
+    emply = db.query(models.Employee).filter(models.Employee.user_name==user_credentional.username).filter(models.Employee.password==user_credentional.password).first()
+    if not emply:
+        raise HTTPException(status_code = status.HTTP_403_FORBIDDEN, detail = "Invalid Credentials")
+    
+    if emply.manager_employee_id != None:
+        manager = db.query(models.Employee).filter(models.Employee.employee_id==emply.manager_employee_id).first()
+        emply.manager = manager
+
+    permissions = db.query(models.EmployeePermission).filter(models.EmployeePermission.employee_id==emply.employee_id).all()
+    if permissions:
+        emply.permissions = permissions
     return emply
 
 
