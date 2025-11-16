@@ -128,10 +128,10 @@ def get_remaining_leave_count( id:int, types: str = "all_types", db:Session = De
     casual = 10
     general = 5
     sick = 10
-    vaccation = 4
+    vacation = 4
     bereavement = 1
-    matternity = 84
-    patternity  = 14
+    maternity = 84
+    paternity   = 14
 
     query = db.query(models.LeaveTransaction).filter(models.LeaveTransaction.employee_id==id)  #.count()
     balance = total_leaves- query.count()
@@ -147,14 +147,14 @@ def get_remaining_leave_count( id:int, types: str = "all_types", db:Session = De
         balance = general - query.count()
     if types == "sick":
         balance = sick - query.count()
-    if types == "vaccation":
-        balance = vaccation - query.count()
+    if types == "vacation":
+        balance = vacation - query.count()
     if types == "bereavement":
         balance = bereavement - query.count()
-    if types == "matternity":
-        balance = matternity - query.count()
-    if types == "patternity":
-        balance = patternity - query.count()
+    if types == "maternity":
+        balance = maternity - query.count()
+    if types == "paternity":
+        balance = paternity  - query.count()
 
     return balance
     

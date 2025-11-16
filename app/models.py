@@ -89,9 +89,9 @@ class LeaveType(enum.Enum):
     general = "general"
     sick = "sick"
     casual = 'casual'
-    vaccation = "vaccation"
-    matternity = "matternity"
-    patternity = "patternity"
+    vacation = "vacation"
+    maternity = "maternity"
+    paternity  = "paternity"
     bereavement = "bereavement"
     # Add other leave types as needed
 
