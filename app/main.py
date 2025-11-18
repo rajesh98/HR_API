@@ -1,7 +1,7 @@
 from typing import List
 from fastapi import FastAPI
 from fastapi import Depends,HTTPException,status,APIRouter
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import desc, func, or_, asc
 from fastapi.security.oauth2 import OAuth2PasswordRequestForm
@@ -20,7 +20,7 @@ from .models import LeaveType, LeaveStatus
 
 #from .router import user,auth, question,quiz,slot,event,result,category,quiztype,room,participant, stateManagement, currentStatus, resend_mail, websocket_api, sdp, clear_db
 
-
+# 3. Create the table in the database
 models.Base.metadata.create_all(bind=engine)
 
 
@@ -41,7 +41,32 @@ app.add_middleware(
     allow_headers=["Access-Control-Allow-Headers", 'Content-Type', 'Authorization','Access-Control-Allow-Origin'],
 )
 
+leave_quota = [
+    models.MaxLeaveQuota(leave_type='general', max_count=5),
+    models.MaxLeaveQuota(leave_type='casual', max_count=10),
+    models.MaxLeaveQuota(leave_type='sick', max_count=10),
+    models.MaxLeaveQuota(leave_type='paternity', max_count=14),
+    models.MaxLeaveQuota(leave_type='maternity', max_count=84),
+    models.MaxLeaveQuota(leave_type='bereavement', max_count=1),
+    models.MaxLeaveQuota(leave_type='vaccation', max_count=4),
+    #models.MaxLeaveQuota(leave_type='total', count=30),
+]
 
+@app.get("/MaxLeaveQuota",)
+def add_seed_data(db:Session = Depends(get_db)):
+    
+    # 4. Create a session
+    # Session = sessionmaker(bind=engine)
+    # session = Session()
+    # session.add(models.MaxLeaveQuota( ** (schemas.leaveQuotaCreate(id=1,leave_type='general', count=5).dict())))
+    # session.commit()
+    #db=get_db()
+    if db.query(models.MaxLeaveQuota).first():
+        return
+    db.add_all(leave_quota)
+    db.commit()
+
+#add_seed_data(leave_quota)
 
 @app.get('/')
 def root():
@@ -190,7 +215,7 @@ def add_leave( leave:schemas.leaveCreate,  db:Session = Depends(get_db)):
     return new_slot
 
 @app.post("/multiple-leaves", status_code=status.HTTP_201_CREATED)
-def add_leave( leaves:schemas.multipleLeaveCreate,  db:Session = Depends(get_db)):
+def add_multiple_leaves( leaves:schemas.multipleLeaveCreate,  db:Session = Depends(get_db)):
 
     if len(leaves.leave_date)>5:
         raise HTTPException(

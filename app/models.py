@@ -12,6 +12,8 @@ from sqlalchemy.sql import func
 from datetime import date
 from typing import List, Optional
 
+
+
 class Employee(Base):
     __tablename__ = 'employees'
 
@@ -101,6 +103,19 @@ class LeaveStatus(enum.Enum):
     Approved = "Approved"
     Rejected = "Rejected"
     # Add other statuses as needed
+
+
+class MaxLeaveQuota(Base):
+    __tablename__ = 'max_leave_quota'
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    leave_type: Mapped[LeaveType] = mapped_column(
+        Enum(LeaveType, name='leave_type_enum', create_type=TRUE), # create_type=False assumes the ENUM type exists in the DB
+        nullable=False,
+    )
+    max_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=False)
+
 
 
 # 2. Define the LeaveTransaction Model

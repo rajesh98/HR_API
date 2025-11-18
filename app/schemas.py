@@ -27,3 +27,9 @@ class multipleLeaveCreate(BaseModel):
     id:int
     leave_date: List[date]
     leave_type:Optional[str]
+
+class leaveQuotaCreate(BaseModel):
+    leave_type: str
+    max_count: int
+    def __repr__(self):
+        return f"<leaveQuotaCreate(id={self.id}, leave_type='{self.leave_type}', count='{self.count}')>"
