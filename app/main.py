@@ -1,7 +1,7 @@
 from typing import List
 from fastapi import FastAPI
 from fastapi import Depends,HTTPException,status,APIRouter
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import desc, func, or_, asc
 from fastapi.security.oauth2 import OAuth2PasswordRequestForm
@@ -20,7 +20,7 @@ from .models import LeaveType, LeaveStatus
 
 #from .router import user,auth, question,quiz,slot,event,result,category,quiztype,room,participant, stateManagement, currentStatus, resend_mail, websocket_api, sdp, clear_db
 
-
+# 3. Create the table in the database
 models.Base.metadata.create_all(bind=engine)
 
 
@@ -41,7 +41,32 @@ app.add_middleware(
     allow_headers=["Access-Control-Allow-Headers", 'Content-Type', 'Authorization','Access-Control-Allow-Origin'],
 )
 
+leave_quota = [
+    models.MaxLeaveQuota(leave_type='general', max_count=5),
+    models.MaxLeaveQuota(leave_type='casual', max_count=10),
+    models.MaxLeaveQuota(leave_type='sick', max_count=10),
+    models.MaxLeaveQuota(leave_type='paternity', max_count=14),
+    models.MaxLeaveQuota(leave_type='maternity', max_count=84),
+    models.MaxLeaveQuota(leave_type='bereavement', max_count=1),
+    models.MaxLeaveQuota(leave_type='vaccation', max_count=4),
+    #models.MaxLeaveQuota(leave_type='total', count=30),
+]
 
+@app.get("/MaxLeaveQuota",)
+def add_seed_data(db:Session = Depends(get_db)):
+    
+    # 4. Create a session
+    # Session = sessionmaker(bind=engine)
+    # session = Session()
+    # session.add(models.MaxLeaveQuota( ** (schemas.leaveQuotaCreate(id=1,leave_type='general', count=5).dict())))
+    # session.commit()
+    #db=get_db()
+    if db.query(models.MaxLeaveQuota).first():
+        return
+    db.add_all(leave_quota)
+    db.commit()
+
+#add_seed_data(leave_quota)
 
 @app.get('/')
 def root():
@@ -67,7 +92,7 @@ def get_a_user( id:int, db:Session = Depends(get_db)):
         emply.permissions = permissions
     return emply
 
-@app.get("/login/employee/",)
+@app.post("/login/employee/")
 def login( user_credentional: OAuth2PasswordRequestForm = Depends(),db:Session = Depends(get_db)):
 
     emply = db.query(models.Employee).filter(models.Employee.user_name==user_credentional.username).filter(models.Employee.password==user_credentional.password).first()
@@ -182,9 +207,53 @@ def add_leave( leave:schemas.leaveCreate,  db:Session = Depends(get_db)):
     if existing_leave.first():
         raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail=f"leave in that date already existd",
+                detail=f"leave in that date already exist",
             ) 
     new_slot = models.LeaveTransaction(leave_date = leave.leave_date, leave_type = leave.leave_type, employee_id= leave.id)
     db.add(new_slot)
     db.commit()
     return new_slot
+
+@app.post("/multiple-leaves", status_code=status.HTTP_201_CREATED)
+def add_multiple_leaves( leaves:schemas.multipleLeaveCreate,  db:Session = Depends(get_db)):
+
+    if len(leaves.leave_date)>5:
+        raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=f"Can Not apply leaves for more than 5 days at a time. Try in parts",
+            ) 
+
+    if leaves.leave_type not in LeaveType:
+        raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"leave type '{leaves.leave_type }' not found",
+            )
+
+    existing_leave = db.query(models.LeaveTransaction).filter(models.LeaveTransaction.employee_id==leaves.id).filter(models.LeaveTransaction.leave_date.in_(leaves.leave_date))
+    if existing_leave.first():
+        raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=f"leave in one of the selected dates already exist",
+            ) 
+    
+    ##existing_leave = db.query(models.LeaveTransaction).filter(models.LeaveTransaction.employee_id==leave.id).filter(models.LeaveTransaction.leave_date==leave.leave_date)
+    # if existing_leave.first():
+    #     raise HTTPException(
+    #             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+    #             detail=f"leave in that date already existd",
+    #         ) 
+
+    all_leaves = []
+    for date in leaves.leave_date:
+        new_l = models.LeaveTransaction(
+            employee_id = leaves.id,
+            leave_date = date,
+            leave_type = leaves.leave_type,
+        )
+        all_leaves.append(new_l)
+    
+
+    db.add_all(all_leaves)
+    
+    db.commit()
+    return all_leaves

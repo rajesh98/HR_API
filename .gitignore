@@ -8,3 +8,7 @@ wheels/
 
 # Virtual environments
 .venv
+.idea
+.env
+node_modules/
+HR_API
