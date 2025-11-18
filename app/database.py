@@ -13,7 +13,7 @@ import urllib.parse
 db_user="postgres"
 db_password="Rajesh1234@"
 db_host="localhost"
-db_name="HR_test"
+db_name="HR"
 
 # db_user = os.getenv("db_user")
 # db_password = os.getenv("db_password")

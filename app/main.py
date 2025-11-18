@@ -151,9 +151,9 @@ def get_remaining_leave_count( id:int, types: str = "all_types", db:Session = De
         balance = vaccation - query.count()
     if types == "bereavement":
         balance = bereavement - query.count()
-    if types == "matternity":
+    if types == "maternity":
         balance = matternity - query.count()
-    if types == "patternity":
+    if types == "paternity":
         balance = patternity - query.count()
 
     return balance
@@ -182,9 +182,53 @@ def add_leave( leave:schemas.leaveCreate,  db:Session = Depends(get_db)):
     if existing_leave.first():
         raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail=f"leave in that date already existd",
+                detail=f"leave in that date already exist",
             ) 
     new_slot = models.LeaveTransaction(leave_date = leave.leave_date, leave_type = leave.leave_type, employee_id= leave.id)
     db.add(new_slot)
     db.commit()
     return new_slot
+
+@app.post("/multiple-leaves", status_code=status.HTTP_201_CREATED)
+def add_leave( leaves:schemas.multipleLeaveCreate,  db:Session = Depends(get_db)):
+
+    if len(leaves.leave_date)>5:
+        raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=f"Can Not apply leaves for more than 5 days at a time. Try in parts",
+            ) 
+
+    if leaves.leave_type not in LeaveType:
+        raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"leave type '{leaves.leave_type }' not found",
+            )
+
+    existing_leave = db.query(models.LeaveTransaction).filter(models.LeaveTransaction.employee_id==leaves.id).filter(models.LeaveTransaction.leave_date.in_(leaves.leave_date))
+    if existing_leave.first():
+        raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=f"leave in one of the selected dates already exist",
+            ) 
+    
+    ##existing_leave = db.query(models.LeaveTransaction).filter(models.LeaveTransaction.employee_id==leave.id).filter(models.LeaveTransaction.leave_date==leave.leave_date)
+    # if existing_leave.first():
+    #     raise HTTPException(
+    #             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+    #             detail=f"leave in that date already existd",
+    #         ) 
+
+    all_leaves = []
+    for date in leaves.leave_date:
+        new_l = models.LeaveTransaction(
+            employee_id = leaves.id,
+            leave_date = date,
+            leave_type = leaves.leave_type,
+        )
+        all_leaves.append(new_l)
+    
+
+    db.add_all(all_leaves)
+    
+    db.commit()
+    return all_leaves

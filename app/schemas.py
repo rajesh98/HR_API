@@ -22,3 +22,8 @@ class leaveCreate(BaseModel):
     id:int
     leave_date: date
     leave_type:Optional[str]
+
+class multipleLeaveCreate(BaseModel):
+    id:int
+    leave_date: List[date]
+    leave_type:Optional[str]
