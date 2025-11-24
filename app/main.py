@@ -82,17 +82,26 @@ def get_all_user( db:Session = Depends(get_db)):
 @app.get("/employee/id/{id}",)
 def get_a_user( id:int, db:Session = Depends(get_db)):
     emply = db.query(models.Employee).filter(models.Employee.employee_id==id).first()
+    if not emply:
+        raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=f"Not found",
+            ) 
     #print(type(emply))
-    if emply.manager_employee_id != None:
-        manager = db.query(models.Employee).filter(models.Employee.employee_id==emply.manager_employee_id).first()
-        emply.manager = manager
+    #if emply.manager_employee_id != None:
+    manager = db.query(models.Employee).filter(models.Employee.employee_id==emply.manager_employee_id).first()
+    emply.manager = manager
 
     permissions = db.query(models.EmployeePermission).filter(models.EmployeePermission.employee_id==id).all()
-    if permissions:
-        emply.permissions = permissions
-    return emply
+    emply.permissions = permissions
 
-@app.post("/login/employee/",)
+
+    subordinates = db.query(models.Employee).filter(models.Employee.manager_employee_id==emply.employee_id).all()
+    emply.subordinates=subordinates
+    return emply
+    #return emply
+
+@app.post("/login/employee/")
 def login( user_credentional: OAuth2PasswordRequestForm = Depends(),db:Session = Depends(get_db)):
 
     emply = db.query(models.Employee).filter(models.Employee.user_name==user_credentional.username).filter(models.Employee.password==user_credentional.password).first()
@@ -156,10 +165,10 @@ def get_remaining_leave_count( id:int, types: str = "all_types", db:Session = De
     casual = 10
     general = 5
     sick = 10
-    vaccation = 4
+    vacation = 4
     bereavement = 1
-    matternity = 84
-    patternity  = 14
+    maternity = 84
+    paternity   = 14
 
     query = db.query(models.LeaveTransaction).filter(models.LeaveTransaction.employee_id==id)  #.count()
     balance = total_leaves- query.count()
@@ -175,14 +184,14 @@ def get_remaining_leave_count( id:int, types: str = "all_types", db:Session = De
         balance = general - query.count()
     if types == "sick":
         balance = sick - query.count()
-    if types == "vaccation":
-        balance = vaccation - query.count()
+    if types == "vacation":
+        balance = vacation - query.count()
     if types == "bereavement":
         balance = bereavement - query.count()
     if types == "maternity":
-        balance = matternity - query.count()
+        balance = maternity - query.count()
     if types == "paternity":
-        balance = patternity - query.count()
+        balance = paternity  - query.count()
 
     return balance
     
