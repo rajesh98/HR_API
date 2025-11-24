@@ -228,3 +228,29 @@ class EmployeePermission(Base):
             f"EmployeePermission(employee_id={self.employee_id!r}, "
             f"permission={self.permission.value!r})"
         )
+    
+
+
+class Policy(Base):
+    __tablename__ = 'company_policy'
+
+    # ----------------------------------------------------
+    # Columns:
+    # ----------------------------------------------------
+
+    # id: primary key, integer
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    # policy_type: non-nullable string (e.g., VARCHAR(50))
+    policy_type: Mapped[str] = mapped_column(String(50), nullable=False)
+
+    # policy_details: string (allowing longer text, using general String or Text)
+    # Assuming nullable, as policy details can sometimes be optional or short
+    policy_details: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+
+
+    def __repr__(self) -> str:
+        return (
+            f"Policy(id={self.id!r}, type={self.policy_type!r}, "
+            f"details_length={len(self.policy_details or '')})"
+        )

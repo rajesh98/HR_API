@@ -92,20 +92,23 @@ def get_a_user( id:int, db:Session = Depends(get_db)):
         emply.permissions = permissions
     return emply
 
-@app.get("/login/employee/",)
+@app.post("/login/employee/",)
 def login( user_credentional: OAuth2PasswordRequestForm = Depends(),db:Session = Depends(get_db)):
 
     emply = db.query(models.Employee).filter(models.Employee.user_name==user_credentional.username).filter(models.Employee.password==user_credentional.password).first()
     if not emply:
         raise HTTPException(status_code = status.HTTP_403_FORBIDDEN, detail = "Invalid Credentials")
     
-    if emply.manager_employee_id != None:
-        manager = db.query(models.Employee).filter(models.Employee.employee_id==emply.manager_employee_id).first()
-        emply.manager = manager
+    #if emply.manager_employee_id != None:
+    manager = db.query(models.Employee).filter(models.Employee.employee_id==emply.manager_employee_id).first()
+    emply.manager = manager
 
     permissions = db.query(models.EmployeePermission).filter(models.EmployeePermission.employee_id==emply.employee_id).all()
-    if permissions:
-        emply.permissions = permissions
+    #if permissions:
+    emply.permissions = permissions
+
+    subordinates = db.query(models.Employee).filter(models.Employee.manager_employee_id==emply.employee_id).all()
+    emply.subordinates=subordinates
     return emply
 
 
@@ -257,3 +260,23 @@ def add_multiple_leaves( leaves:schemas.multipleLeaveCreate,  db:Session = Depen
     
     db.commit()
     return all_leaves
+
+
+
+@app.put('/leave-status-update/{transaction_id}/', )
+def update_a_leave_status(transaction_id:int, leave_status:str = "Applied",db:Session = Depends(get_db)):
+
+    if leave_status not in LeaveStatus:
+        raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"leave status '{leave_status}' not found",
+            ) 
+    leave = db.query(models.LeaveTransaction).filter(models.LeaveTransaction.transaction_id==transaction_id)
+    if not leave.first():
+        raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"leave transaction not found",
+            ) 
+    leave.first().leave_status = leave_status
+    db.commit()
+    return leave.first()
